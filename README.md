@@ -5,9 +5,7 @@ A project module that turns work packages of a configurable type (e.g. sensor
 chart's data series **freely mapped to a custom field** from a settings UI,
 instead of hardcoded in code.
 
-It replaces the standalone Flask app in `grafici/` (a fixed dashboard reading
-a single hardcoded OpenProject project/work package type/custom-field set via
-the REST API) with a native OpenProject plugin: no external service, no API
+Native OpenProject plugin: no external service, no API
 key, native permission checks, and a per-project configuration UI so any
 project can point its own "measurements" type and custom fields at its own
 charts.
