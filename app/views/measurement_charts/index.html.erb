@@ -1,0 +1,310 @@
+<% html_title t('measurement_charts.label_measurement_charts') %>
+
+<div class="op-page-header">
+  <div class="op-page-header--title-container">
+    <h1 class="op-page-header--title"><%= t('measurement_charts.label_measurement_charts') %></h1>
+  </div>
+  <% if @can_manage %>
+    <div class="op-page-header--actions">
+      <%= link_to project_measurement_chart_widgets_path(@project), class: 'button' do %>
+        <i class="icon-settings"></i> <%= t('measurement_charts.configure_charts') %>
+      <% end %>
+      <%= link_to edit_project_measurement_chart_settings_path(@project), class: 'button' do %>
+        <i class="icon-filter"></i> <%= t('measurement_charts.configure_source') %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<% unless @setting&.configured? %>
+  <div class="op-toast -warning">
+    <div class="op-toast--content">
+      <p><%= t('measurement_charts.not_configured') %></p>
+      <% if @can_manage %>
+        <p><%= link_to t('measurement_charts.configure_source'), edit_project_measurement_chart_settings_path(@project) %></p>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <div class="measurement-charts--filters">
+    <div class="filter-form">
+      <div class="form--field">
+        <label class="form--label" for="mc-range-preset"><%= t('measurement_charts.range_preset') %></label>
+        <select id="mc-range-preset" class="form--select">
+          <option value="7"><%= t('measurement_charts.range_last_days', count: 7) %></option>
+          <option value="30" selected><%= t('measurement_charts.range_last_days', count: 30) %></option>
+          <option value="90"><%= t('measurement_charts.range_last_days', count: 90) %></option>
+          <option value="custom"><%= t('measurement_charts.range_custom') %></option>
+        </select>
+      </div>
+      <div class="form--field" id="mc-custom-start" hidden>
+        <label class="form--label" for="mc-start-date"><%= t('measurement_charts.start_date') %></label>
+        <input type="date" id="mc-start-date" class="form--text-field">
+      </div>
+      <div class="form--field" id="mc-custom-end" hidden>
+        <label class="form--label" for="mc-end-date"><%= t('measurement_charts.end_date') %></label>
+        <input type="date" id="mc-end-date" class="form--text-field">
+      </div>
+      <div class="form--field">
+        <button type="button" id="mc-update" class="button -primary"><%= t('measurement_charts.update') %></button>
+      </div>
+      <div class="form--field">
+        <button type="button" id="mc-export" class="button">
+          <i class="icon-export-csv"></i> <%= t('measurement_charts.export_csv') %>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mc-info" class="measurement-charts--info"><%= t('measurement_charts.loading') %></div>
+
+  <% if @widgets.empty? %>
+    <div class="op-toast -info">
+      <div class="op-toast--content">
+        <p><%= t('measurement_charts.no_widgets') %></p>
+        <% if @can_manage %>
+          <p><%= link_to t('measurement_charts.new_widget'), new_project_measurement_chart_widget_path(@project) %></p>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <% @widgets.each do |widget| %>
+      <div class="measurement-charts--chart-container">
+        <div class="measurement-charts--chart-title"><%= widget.title %></div>
+        <canvas id="mc-chart-<%= widget.id %>"
+                data-widget="<%= { id: widget.id, title: widget.title, chart_type: widget.chart_type,
+                                    series: widget.measurement_chart_series.map { |s|
+                                      { custom_field_id: s.custom_field_id, label: s.label, color: s.color,
+                                        axis_label: s.axis_label, value_offset: s.value_offset }
+                                    } }.to_json %>"></canvas>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>
+
+<style>
+  .measurement-charts--filters {
+    max-width: 900px;
+    margin: 0 auto 20px;
+    background: var(--body-background-color, #fff);
+    padding: 16px 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  .filter-form { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+  .measurement-charts--info { text-align: center; margin: 10px 0 20px; color: var(--content-default-font-color, #666); }
+  .measurement-charts--chart-container {
+    max-width: 900px;
+    margin: 0 auto 24px;
+    background: var(--body-background-color, #fff);
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  .measurement-charts--chart-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+</style>
+
+<%= nonced_javascript_tag do %>
+  (function () {
+    var DATA_URL = <%= raw data_project_measurement_charts_path(@project).to_json %>;
+    var EXPORT_URL = <%= raw export_project_measurement_charts_path(@project).to_json %>;
+    var MAX_BINS = <%= (@setting&.bin_count || 30).to_json %>;
+    var REFRESH_MS = <%= ((@setting&.refresh_interval_seconds || 300) * 1000).to_json %>;
+    var charts = {};
+
+    var presetEl = document.getElementById('mc-range-preset');
+    var startEl = document.getElementById('mc-start-date');
+    var endEl = document.getElementById('mc-end-date');
+    var updateBtn = document.getElementById('mc-update');
+    var exportBtn = document.getElementById('mc-export');
+    var infoEl = document.getElementById('mc-info');
+
+    if (!updateBtn) return; // not configured / no widgets: nothing to wire up
+
+    presetEl.addEventListener('change', function () {
+      var custom = this.value === 'custom';
+      document.getElementById('mc-custom-start').hidden = !custom;
+      document.getElementById('mc-custom-end').hidden = !custom;
+    });
+    updateBtn.addEventListener('click', updateCharts);
+    exportBtn.addEventListener('click', exportCsv);
+
+    function exportCsv() {
+      var range = getDateRange();
+      if (!range) return;
+
+      window.location.href = EXPORT_URL + '?start_date=' + range.start + '&end_date=' + range.end;
+    }
+
+    function getDateRange() {
+      var preset = presetEl.value;
+      var today = new Date();
+      var start, end;
+      if (preset === 'custom') {
+        start = startEl.value;
+        end = endEl.value;
+        if (!start || !end) {
+          alert('<%= j t('measurement_charts.select_both_dates') %>');
+          return null;
+        }
+      } else {
+        var days = parseInt(preset, 10);
+        var s = new Date(today);
+        s.setDate(today.getDate() - days);
+        start = s.toISOString().split('T')[0];
+        end = today.toISOString().split('T')[0];
+      }
+      return { start: start, end: end };
+    }
+
+    function groupIntoBins(measurements, maxBins) {
+      if (measurements.length === 0) return { labels: [], binned: [] };
+
+      var sorted = measurements.slice().sort(function (a, b) {
+        return new Date(a.date) - new Date(b.date);
+      });
+
+      var dateGroups = [];
+      var dateIndex = {};
+      sorted.forEach(function (m) {
+        if (!(m.date in dateIndex)) {
+          dateIndex[m.date] = dateGroups.length;
+          dateGroups.push({ label: m.date, items: [] });
+        }
+        dateGroups[dateIndex[m.date]].items.push(m);
+      });
+
+      if (dateGroups.length <= maxBins) {
+        return { labels: dateGroups.map(function (g) { return g.label; }), binned: dateGroups.map(function (g) { return g.items; }) };
+      }
+
+      var first = new Date(sorted[0].date);
+      var last = new Date(sorted[sorted.length - 1].date);
+      var range = last - first;
+      var binSize = range / maxBins || 1;
+
+      var bins = [];
+      var labels = [];
+      for (var i = 0; i < maxBins; i++) {
+        bins.push([]);
+        var center = new Date(first.getTime() + (i + 0.5) * binSize);
+        labels.push(center.toISOString().split('T')[0]);
+      }
+      sorted.forEach(function (m) {
+        var idx = Math.floor((new Date(m.date) - first) / binSize);
+        if (idx >= maxBins) idx = maxBins - 1;
+        if (idx < 0) idx = 0;
+        bins[idx].push(m);
+      });
+
+      return { labels: labels, binned: bins };
+    }
+
+    function binAverage(bin, fieldId) {
+      var values = [];
+      bin.forEach(function (m) {
+        var v = m.values ? m.values[fieldId] : null;
+        if (v !== null && v !== undefined) values.push(parseFloat(v));
+      });
+      if (values.length === 0) return null;
+      var sum = values.reduce(function (a, b) { return a + b; }, 0);
+      return sum / values.length;
+    }
+
+    function hexToRgba(hex, alpha) {
+      var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+      if (!m) return 'rgba(75,192,192,' + alpha + ')';
+      var r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    }
+
+    function buildScales(series, isBar) {
+      var order = [];
+      series.forEach(function (s) {
+        var key = s.axis_label || '';
+        if (order.indexOf(key) === -1) order.push(key);
+      });
+
+      var scaleIds = {};
+      var scales = {};
+      order.forEach(function (label, idx) {
+        var id = idx === 0 ? 'y' : 'y' + idx;
+        scaleIds[label] = id;
+        scales[id] = {
+          type: 'linear',
+          display: idx < 2,
+          position: idx % 2 === 0 ? 'left' : 'right',
+          beginAtZero: isBar || undefined,
+          title: { display: !!label, text: label }
+        };
+        if (idx > 0) scales[id].grid = { drawOnChartArea: false };
+      });
+      return { scaleIds: scaleIds, scales: scales };
+    }
+
+    function renderWidget(canvas, widget, labels, binned) {
+      var isBar = widget.chart_type === 'bar';
+      var built = buildScales(widget.series, isBar);
+
+      var datasets = widget.series.map(function (s) {
+        var offset = parseFloat(s.value_offset) || 0;
+        return {
+          label: s.axis_label ? (s.label + ' (' + s.axis_label + ')') : s.label,
+          data: binned.map(function (bin) {
+            var avg = binAverage(bin, s.custom_field_id);
+            return avg === null ? null : avg + offset;
+          }),
+          borderColor: s.color,
+          backgroundColor: hexToRgba(s.color, isBar ? 0.5 : 0.1),
+          yAxisID: built.scaleIds[s.axis_label || ''],
+          borderWidth: isBar ? 1 : undefined,
+          tension: isBar ? undefined : 0.1,
+          spanGaps: !isBar,
+          pointRadius: isBar ? undefined : 4,
+          pointHoverRadius: isBar ? undefined : 6
+        };
+      });
+
+      if (charts[widget.id]) charts[widget.id].destroy();
+      charts[widget.id] = new Chart(canvas, {
+        type: widget.chart_type,
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          scales: built.scales
+        }
+      });
+    }
+
+    function updateCharts() {
+      var range = getDateRange();
+      if (!range) return;
+
+      infoEl.textContent = <%= t('measurement_charts.loading').to_json.html_safe %>;
+
+      fetch(DATA_URL + '?start_date=' + range.start + '&end_date=' + range.end)
+        .then(function (r) {
+          if (!r.ok) throw new Error('request failed');
+          return r.json();
+        })
+        .then(function (payload) {
+          var measurements = payload.measurements || [];
+          infoEl.textContent = payload.count + ' <%= j t('measurement_charts.measurements_between') %> ' + range.start + ' → ' + range.end;
+
+          var grouped = groupIntoBins(measurements, MAX_BINS);
+
+          document.querySelectorAll('canvas[id^="mc-chart-"]').forEach(function (canvas) {
+            var widget = JSON.parse(canvas.dataset.widget);
+            renderWidget(canvas, widget, grouped.labels, grouped.binned);
+          });
+        })
+        .catch(function () {
+          infoEl.textContent = <%= t('measurement_charts.load_error').to_json.html_safe %>;
+        });
+    }
+
+    updateCharts();
+    if (REFRESH_MS > 0) setInterval(updateCharts, REFRESH_MS);
+  })();
+<% end %>

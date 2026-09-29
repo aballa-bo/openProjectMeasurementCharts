@@ -1,0 +1,72 @@
+<% html_title t('measurement_charts.edit_widget') %>
+
+<div class="op-page-header">
+  <div class="op-page-header--title-container">
+    <h1 class="op-page-header--title"><%= t('measurement_charts.edit_widget') %></h1>
+  </div>
+  <div class="op-page-header--actions">
+    <%= link_to project_measurement_chart_widgets_path(@project), class: 'button' do %>
+      <i class="icon-view-list"></i> <%= t('measurement_charts.back_to_charts') %>
+    <% end %>
+  </div>
+</div>
+
+<%= render 'form', widget: @widget %>
+
+<h2><%= t('measurement_charts.series') %></h2>
+<p class="text-muted"><%= t('measurement_charts.series_help') %></p>
+
+<div class="generic-table--container">
+  <% if @series.empty? %>
+    <div class="op-toast -info">
+      <div class="op-toast--content"><p><%= t('measurement_charts.no_series') %></p></div>
+    </div>
+  <% else %>
+    <table class="generic-table">
+      <thead>
+        <tr>
+          <th><%= t('measurement_charts.custom_field') %></th>
+          <th><%= t('measurement_charts.series_label') %></th>
+          <th><%= t('measurement_charts.color') %></th>
+          <th><%= t('measurement_charts.axis_label') %></th>
+          <th><%= t('measurement_charts.value_offset') %></th>
+          <th class="generic-table--actions-header"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @series.each do |series| %>
+          <tr>
+            <td><%= series.custom_field.name %></td>
+            <td>
+              <span class="color-swatch" style="display:inline-block;width:12px;height:12px;border-radius:2px;background-color:<%= series.color %>;margin-right:6px;"></span>
+              <%= series.label %>
+            </td>
+            <td><%= series.color %></td>
+            <td><%= series.axis_label %></td>
+            <td><%= series.value_offset %></td>
+            <td class="buttons">
+              <%= link_to edit_project_measurement_chart_widget_measurement_chart_series_path(@project, @widget, series), class: 'icon icon-edit', title: t('button_edit') do %><% end %>
+              <%= button_to project_measurement_chart_widget_measurement_chart_series_path(@project, @widget, series),
+                            method: :delete,
+                            form_class: 'd-inline',
+                            class: 'button -transparent icon icon-delete text-danger p-0 border-0 bg-transparent',
+                            title: t('button_delete'),
+                            data: { turbo_confirm: t('measurement_charts.confirm_delete_series', label: series.label) } do %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
+
+<h3><%= t('measurement_charts.new_series') %></h3>
+<%= form_with(model: [@project, @widget, @new_series], local: true, class: 'tabular') do |f| %>
+  <div class="box tabular">
+    <%= render 'measurement_chart_series/fields', f:, available_custom_fields: @available_custom_fields %>
+  </div>
+  <div class="form--actions">
+    <%= f.submit t('measurement_charts.add_series'), class: 'button -primary' %>
+  </div>
+<% end %>

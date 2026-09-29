@@ -1,0 +1,57 @@
+<% html_title t('measurement_charts.configure_source') %>
+
+<div class="op-page-header">
+  <div class="op-page-header--title-container">
+    <h1 class="op-page-header--title"><%= t('measurement_charts.configure_source') %></h1>
+  </div>
+</div>
+
+<p class="text-muted"><%= t('measurement_charts.source_help') %></p>
+
+<%= form_with(model: @setting, url: project_measurement_chart_settings_path(@project), method: :patch, local: true, class: 'tabular') do |f| %>
+  <div class="box tabular">
+    <div class="form--field -required">
+      <%= f.label :work_package_type_id, t('measurement_charts.work_package_type'), class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.collection_select :work_package_type_id, @types, :id, :name, { include_blank: t('measurement_charts.select_a_type') }, class: 'form--select' %>
+        <p class="form--field-instructions"><%= t('measurement_charts.work_package_type_help') %></p>
+      </div>
+    </div>
+
+    <div class="form--field">
+      <%= f.label :date_custom_field_id, t('measurement_charts.date_field'), class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.collection_select :date_custom_field_id, @date_fields, :id, :name, { include_blank: t('measurement_charts.date_field_fallback') }, class: 'form--select' %>
+        <p class="form--field-instructions"><%= t('measurement_charts.date_field_help') %></p>
+      </div>
+    </div>
+
+    <div class="form--field -required">
+      <%= f.label :default_range_days, t('measurement_charts.default_range_days'), class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.number_field :default_range_days, min: 1, class: 'form--text-field -small' %>
+      </div>
+    </div>
+
+    <div class="form--field -required">
+      <%= f.label :bin_count, t('measurement_charts.bin_count'), class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.number_field :bin_count, min: 2, max: 200, class: 'form--text-field -small' %>
+        <p class="form--field-instructions"><%= t('measurement_charts.bin_count_help') %></p>
+      </div>
+    </div>
+
+    <div class="form--field -required">
+      <%= f.label :refresh_interval_seconds, t('measurement_charts.refresh_interval'), class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.number_field :refresh_interval_seconds, min: 0, class: 'form--text-field -small' %>
+        <p class="form--field-instructions"><%= t('measurement_charts.refresh_interval_help') %></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="form--actions">
+    <%= f.submit t('button_save'), class: 'button -primary' %>
+    <%= link_to t('button_cancel'), project_measurement_charts_path(@project), class: 'button' %>
+  </div>
+<% end %>
