@@ -86,7 +86,7 @@ with a hardcoded API key and no permission checks), the plugin queries
 sudo bash install.sh
 ```
 
-This copies the plugin into `/opt/openproject/modules/openProjectMeasurementCharts
+This copies the plugin into `/opt/openproject/modules/measurement_charts
 `,
 registers it in `Gemfile.modules`, runs `bundle install` and the database
 migrations, deploys the vendored Chart.js file as a static asset, and
