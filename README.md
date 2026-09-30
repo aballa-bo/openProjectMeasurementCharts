@@ -65,9 +65,7 @@ db/migrate/  # measurement_chart_settings, _widgets, _series
 
 ## How data is loaded
 
-Unlike the original script (which called the OpenProject REST API over HTTP
-with a hardcoded API key and no permission checks), the plugin queries
-`ActiveRecord` directly inside the same Rails process:
+The plugin queries `ActiveRecord` directly inside the same Rails process:
 
 1. Work packages of the configured type, visible to the current user
    (`WorkPackage.visible`), are loaded for the project.
