@@ -1,13 +1,13 @@
 # OpenProject Measurement Charts
 
 A project module that turns work packages of a configurable type (e.g. sensor
-"measurements") into per-project dashboards of Chart.js charts - with every
+"measurements") into per-project chart dashboard - with every
 chart's data series **freely mapped to a custom field** from a settings UI,
 instead of hardcoded in code.
 
 Native OpenProject plugin: no external service, no API
 key, native permission checks, and a per-project configuration UI so any
-project can point its own "measurements" type and custom fields at its own
+project can point its own type and custom fields at its own
 charts.
 
 ## What it does
