@@ -1,0 +1,18 @@
+<% html_title t('measurement_charts.edit_series') %>
+
+<div class="op-page-header">
+  <div class="op-page-header--title-container">
+    <h1 class="op-page-header--title"><%= t('measurement_charts.edit_series') %> &mdash; <%= @widget.title %></h1>
+  </div>
+</div>
+
+<%= form_with(model: [@project, @widget, @series], local: true, class: 'tabular') do |f| %>
+  <div class="box tabular">
+    <%= render 'measurement_chart_series/fields', f:, available_custom_fields: @available_custom_fields %>
+  </div>
+
+  <div class="form--actions">
+    <%= f.submit t('button_save'), class: 'button -primary' %>
+    <%= link_to t('button_cancel'), edit_project_measurement_chart_widget_path(@project, @widget), class: 'button' %>
+  </div>
+<% end %>

@@ -1,0 +1,24 @@
+<%= form_with(model: [@project, widget], local: true, class: 'tabular') do |f| %>
+  <div class="box tabular">
+    <div class="form--field -required">
+      <%= f.label :title, class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.text_field :title, required: true, class: 'form--text-field' %>
+      </div>
+    </div>
+
+    <div class="form--field -required">
+      <%= f.label :chart_type, t('measurement_charts.chart_type'), class: 'form--label' %>
+      <div class="form--field-container">
+        <%= f.select :chart_type,
+              [[t('measurement_charts.chart_type_line'), 'line'], [t('measurement_charts.chart_type_bar'), 'bar']],
+              {}, class: 'form--select' %>
+      </div>
+    </div>
+  </div>
+
+  <div class="form--actions">
+    <%= f.submit t('button_save'), class: 'button -primary' %>
+    <%= link_to t('button_cancel'), project_measurement_chart_widgets_path(@project), class: 'button' %>
+  </div>
+<% end %>

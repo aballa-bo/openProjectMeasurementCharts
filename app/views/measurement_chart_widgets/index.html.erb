@@ -1,0 +1,73 @@
+<% html_title t('measurement_charts.configure_charts') %>
+
+<div class="op-page-header">
+  <div class="op-page-header--title-container">
+    <h1 class="op-page-header--title"><%= t('measurement_charts.configure_charts') %></h1>
+  </div>
+  <div class="op-page-header--actions">
+    <%= link_to project_measurement_charts_path(@project), class: 'button' do %>
+      <i class="icon-view-list"></i> <%= t('measurement_charts.back_to_dashboard') %>
+    <% end %>
+    <%= link_to new_project_measurement_chart_widget_path(@project), class: 'button -primary' do %>
+      <i class="icon-add"></i> <%= t('measurement_charts.new_widget') %>
+    <% end %>
+  </div>
+</div>
+
+<% unless @setting&.configured? %>
+  <div class="op-toast -warning">
+    <div class="op-toast--content">
+      <p><%= t('measurement_charts.not_configured') %></p>
+      <p><%= link_to t('measurement_charts.configure_source'), edit_project_measurement_chart_settings_path(@project) %></p>
+    </div>
+  </div>
+<% end %>
+
+<div class="generic-table--container">
+  <% if @widgets.empty? %>
+    <div class="op-toast -info">
+      <div class="op-toast--content">
+        <p><%= t('measurement_charts.no_widgets') %></p>
+      </div>
+    </div>
+  <% else %>
+    <table class="generic-table">
+      <thead>
+        <tr>
+          <th><%= MeasurementChartWidget.human_attribute_name(:title) %></th>
+          <th><%= t('measurement_charts.chart_type') %></th>
+          <th><%= t('measurement_charts.series') %></th>
+          <th class="generic-table--actions-header"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @widgets.each do |widget| %>
+          <tr>
+            <td><%= link_to widget.title, edit_project_measurement_chart_widget_path(@project, widget), class: 'font-weight-bold' %></td>
+            <td><span class="badge -primary"><%= t("measurement_charts.chart_type_#{widget.chart_type}") %></span></td>
+            <td>
+              <% widget.measurement_chart_series.each do |series| %>
+                <span class="badge" style="background-color: <%= series.color %>; color: #fff;"><%= series.label %></span>
+              <% end %>
+              <% if widget.measurement_chart_series.empty? %>
+                <span class="text-muted small"><%= t('measurement_charts.no_series') %></span>
+              <% end %>
+            </td>
+            <td class="buttons">
+              <%= button_to move_project_measurement_chart_widget_path(@project, widget), params: { direction: 'higher' }, method: :patch, form_class: 'd-inline', class: 'button -transparent icon icon-arrow-up2', title: t('measurement_charts.move_up') do %><% end %>
+              <%= button_to move_project_measurement_chart_widget_path(@project, widget), params: { direction: 'lower' }, method: :patch, form_class: 'd-inline', class: 'button -transparent icon icon-arrow-down2', title: t('measurement_charts.move_down') do %><% end %>
+              <%= link_to edit_project_measurement_chart_widget_path(@project, widget), class: 'icon icon-edit', title: t('button_edit') do %><% end %>
+              <%= button_to project_measurement_chart_widget_path(@project, widget),
+                            method: :delete,
+                            form_class: 'd-inline',
+                            class: 'button -transparent icon icon-delete text-danger p-0 border-0 bg-transparent',
+                            title: t('button_delete'),
+                            data: { turbo_confirm: t('measurement_charts.confirm_delete_widget', title: widget.title) } do %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

@@ -1,0 +1,79 @@
+<div class="form--field -required">
+  <%= f.label :custom_field_id, t('measurement_charts.custom_field'), class: 'form--label' %>
+  <div class="form--field-container">
+    <%= f.collection_select :custom_field_id, available_custom_fields, :id, :name, { include_blank: t('measurement_charts.select_a_field') }, class: 'form--select' %>
+  </div>
+</div>
+
+<div class="form--field">
+  <%= f.label :label, t('measurement_charts.series_label'), class: 'form--label' %>
+  <div class="form--field-container">
+    <%= f.text_field :label, class: 'form--text-field', placeholder: t('measurement_charts.series_label_placeholder') %>
+  </div>
+</div>
+
+<div class="form--field -required">
+  <%= f.label :color, t('measurement_charts.color'), class: 'form--label' %>
+  <div class="form--field-container">
+    <%= f.color_field :color, class: 'form--text-field -small mc-color-input' %>
+    <div class="mc-color-swatches">
+      <% MeasurementChartSeries::SWATCH_COLORS.each do |hex| %>
+        <button type="button" class="mc-color-swatch" data-color="<%= hex %>" style="background-color: <%= hex %>;" title="<%= hex %>" aria-label="<%= hex %>"></button>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="form--field">
+  <%= f.label :axis_label, t('measurement_charts.axis_label'), class: 'form--label' %>
+  <div class="form--field-container">
+    <%= f.text_field :axis_label, class: 'form--text-field -small', placeholder: t('measurement_charts.axis_label_placeholder') %>
+    <p class="form--field-instructions"><%= t('measurement_charts.axis_label_help') %></p>
+  </div>
+</div>
+
+<div class="form--field">
+  <%= f.label :value_offset, t('measurement_charts.value_offset'), class: 'form--label' %>
+  <div class="form--field-container">
+    <%= f.number_field :value_offset, step: 'any', class: 'form--text-field -small' %>
+    <p class="form--field-instructions"><%= t('measurement_charts.value_offset_help') %></p>
+  </div>
+</div>
+
+<style>
+  .mc-color-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .mc-color-swatch {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+  }
+  .mc-color-swatch:hover { transform: scale(1.1); }
+  .mc-color-swatch.-selected { outline: 2px solid var(--content-default-font-color, #333); outline-offset: 1px; }
+</style>
+
+<%= nonced_javascript_tag do %>
+  (function () {
+    document.querySelectorAll('.mc-color-swatches').forEach(function (group) {
+      var input = group.closest('.form--field-container').querySelector('.mc-color-input');
+      if (!input) return;
+
+      function markSelected() {
+        group.querySelectorAll('.mc-color-swatch').forEach(function (btn) {
+          btn.classList.toggle('-selected', btn.dataset.color.toLowerCase() === input.value.toLowerCase());
+        });
+      }
+
+      group.querySelectorAll('.mc-color-swatch').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          input.value = btn.dataset.color;
+          markSelected();
+        });
+      });
+
+      markSelected();
+    });
+  })();
+<% end %>
